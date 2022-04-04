@@ -7,9 +7,9 @@ import {
 } from 'semantic-ui-react'
 import { DataTable } from './components/DataTable'
 import { Pagination } from './components/Pagination'
-import { gql, useQuery } from '@apollo/client';
+// import { gql, useQuery } from '@apollo/client';
 
-const data = [
+const defaultData = [
   { iconExample: true }, {}, {}, {}, {}, {}, {}, {}, {}, {},
 ]
 
@@ -31,53 +31,96 @@ const UnauthorizedUserIcon = () => {
 const columns = [
   {
     id: 'status',
-    render: (row) => row.iconExample && <UpdateInProgressIcon />,
+    render: (row) => (row.version === row.latest_version) && <UpToDateIcon /> || !row.updated && <UpdateInProgressIcon />,
     collapsing: true
   },
   {
-    id: 'user',
-    header: 'User',
+    id: 'user_email',
+    header: 'User Email',
     render: (row) => (
       <>
-        {'my@email.com'}
+        {row.user_email}
         &nbsp;
-        {row.iconExample && <UnauthorizedUserIcon />}
+        {!row.admin && <UnauthorizedUserIcon />}
       </>
     ),
   },
+  //
   {
     id: 'name',
     header: 'Name',
-    render: (row) => 'My Device',
+    render: (row) => row.name,
   },
   {
     id: 'version',
     header: 'Firmware',
-    render: (row) => '1.0.0',
+    render: (row) => row.version,
   },
   {
     id: 'updated',
     header: 'Last Updated',
-    render: (row) => '2021/06/27',
+    render: (row) => row.updated,
   },
 ]
 
 function App() {
+
+  const [data, setData] = useState(defaultData)
+  const [orderBy, setOrderBy] = useState('name')
+  const [direction, setDirection] = useState('asc')
+  const [offset, setOffset] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [size, setSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+
+  useEffect(()=>{
+    fetchDevices()
+  }, [size, offset, orderBy, direction]);
+
+  const sortColumn = async (column) => {
+    if(orderBy === column.id){
+      direction === 'asc' ? setDirection('desc') : setDirection('asc')
+    } else {
+      setOrderBy(column.id)
+    }
+    fetchDevices()
+  }
+
+  const fetchDevices = async ( ) => {    
+    try {
+      const response = await fetch(`http://localhost:3001/devices?limit=${size}&offset=${offset}&orderBy=${orderBy}&direction=${direction}`, {
+        method: "GET",
+          headers: {
+          'Accept': 'application/json'
+        }
+      })
+      const parsedResponse = await response.json()
+      setData(parsedResponse)
+      if(parsedResponse.length > 0 & parsedResponse[0].hasOwnProperty('total') ) setTotalPages( Math.ceil(parsedResponse[0].total/size) )
+    } catch (err) {
+      console.error(err.message)
+    }
+  }
+
   return (
     <DataTable
       data={data}
-      sortBy="user"
+      sortBy={orderBy}
+      direction={direction}
       columns={columns}
-      sort={(columnId) => console.log({ columnId })}
-      header={<Header>Devices to Update</Header>}
+      sort={sortColumn}
+      header={<Header>Devices to Update</Header>} //\\
       footer={
         <Pagination
-          current={1}
-          total={2}
-          size={10}
-          sizes={[10, 25, 50]}
-          setCurrent={(current) => console.log({ current })}
-          setSize={(size) => console.log({ size })}
+          current={currentPage}
+          total={totalPages}
+          size={size}
+          sizes={[10, 20, 100]}
+          setCurrent={(current) => { 
+            setCurrentPage(current); setOffset( (current - 1) * size );
+            } 
+          }
+          setSize={(size) => {setSize(size)}}
         />
       }
     />

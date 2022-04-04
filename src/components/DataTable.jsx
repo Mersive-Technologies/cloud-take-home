@@ -16,9 +16,9 @@ export const DataTable = (props) => (
           <Table.HeaderCell
             key={column.id}
             sorted={
-              props.sortBy.columnId === column.id ? "ascending" : undefined
+              props.sortBy === column.id ? props.direction === 'asc' ? 'ascending' : 'descending' : undefined
             }
-            onClick={() => props.sort(column.id)}
+            onClick={() => props.sort(column)}
             collapsing={column.collapsing}
           >
             {column.header}
@@ -31,7 +31,7 @@ export const DataTable = (props) => (
         <Table.Row key={item.id}>
           {props.columns.map((column) => (
             <Table.Cell
-              key={column.id}
+              key={column.id + " " + item.row_number}
               collapsing={column.collapsing}
             >
               {column.render(item)}
